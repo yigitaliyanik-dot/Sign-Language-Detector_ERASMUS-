@@ -145,11 +145,45 @@ export const translations: Translations = {
   },
 };
 
+export const SIGN_TRANSLATIONS: Record<string, Record<UIAppLanguage, string>> = {
+  Merhaba: { tr: "Merhaba", en: "Hello", de: "Hallo", it: "Ciao" },
+  Nasilsin: { tr: "Nasılsın", en: "How are you", de: "Wie geht's", it: "Come stai" },
+  Nasılsın: { tr: "Nasılsın", en: "How are you", de: "Wie geht's", it: "Come stai" },
+  Ben: { tr: "Ben", en: "Me / I", de: "Ich", it: "Io" },
+  Sen: { tr: "Sen", en: "You", de: "Du", it: "Tu" },
+  İyiyim: { tr: "İyiyim", en: "I'm fine", de: "Mir geht's gut", it: "Sto bene" },
+  Iyiyim: { tr: "İyiyim", en: "I'm fine", de: "Mir geht's gut", it: "Sto bene" },
+  Open_Palm: { tr: "Açık El", en: "Open Palm", de: "Offene Hand", it: "Palmo Aperto" },
+  "Open Palm": { tr: "Açık El", en: "Open Palm", de: "Offene Hand", it: "Palmo Aperto" },
+  Thumb_Up: { tr: "İyiyim / Evet", en: "Good / Yes", de: "Gut / Ja", it: "Bene / Sì" },
+  Thumb_Down: { tr: "Hayır", en: "No", de: "Nein", it: "No" },
+  Victory: { tr: "Barış / V", en: "Peace / V", de: "Frieden / V", it: "Pace / V" },
+  Closed_Fist: { tr: "Yumruk / S", en: "Fist / S", de: "Faust / S", it: "Pugno / S" },
+  Pointing_Up: { tr: "Bir / Yukarı", en: "One / Pointing Up", de: "Eins / Nach oben", it: "Uno / In alto" },
+  "Pointing Up": { tr: "Bir / Yukarı", en: "One / Pointing Up", de: "Eins / Nach oben", it: "Uno / In alto" },
+  ILoveYou: { tr: "Seni Seviyorum", en: "I Love You", de: "Ich liebe dich", it: "Ti amo" },
+};
+
+export function translateSign(sign: string, lang: UIAppLanguage = "tr"): string {
+  if (!sign) return "";
+  const key = sign.trim();
+  const direct = SIGN_TRANSLATIONS[key];
+  if (direct && direct[lang]) return direct[lang];
+
+  // Try checking clean version without underscores
+  const normalizedKey = key.replace(/_/g, " ");
+  const normDirect = SIGN_TRANSLATIONS[normalizedKey];
+  if (normDirect && normDirect[lang]) return normDirect[lang];
+
+  return sign;
+}
+
 export const useTranslation = (lang: UIAppLanguage) => {
   const t = (key: keyof typeof translations["tr"]): string => {
     const value = translations[lang]?.[key] || translations["tr"]?.[key] || key;
     return String(value);
   };
-  return { t };
+  return { t, translateSign: (sign: string) => translateSign(sign, lang) };
 };
+
 

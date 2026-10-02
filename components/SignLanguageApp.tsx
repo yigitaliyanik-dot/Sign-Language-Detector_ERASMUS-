@@ -84,8 +84,8 @@ export const SignLanguageApp: React.FC = () => {
     return predictions;
   }, [isCustomModelActive, landmarks, predictions, hasHandDetected]);
 
-  // Sentence Accumulator with 1.2s Debounce Hold-to-Commit & Smart Spacing
-  const sentenceBuilder = useSentenceBuilder(activePredictions, isPaused, activeLanguage);
+  // Sentence Accumulator with 1.2s Debounce Hold-to-Commit & Smart Spacing with i18n
+  const sentenceBuilder = useSentenceBuilder(activePredictions, isPaused, activeLanguage, uiLanguage);
 
   return (
     <main className="relative w-full h-screen max-h-screen overflow-hidden bg-slate-950 flex flex-col select-none touch-none">
@@ -121,6 +121,7 @@ export const SignLanguageApp: React.FC = () => {
           isPaused={isPaused}
           isLoadingModel={isLoadingModel}
           activeLanguage={activeLanguage}
+          uiLanguage={uiLanguage}
           practiceSign={practiceSign}
           onClearPracticeSign={() => setPracticeSign(null)}
         />

@@ -31,7 +31,7 @@ interface HistorySample {
 
 class HandMotionTracker {
   private history: HistorySample[] = [];
-  private readonly maxWindowMs = 1100; // 1.1s tracking window
+  private readonly maxWindowMs = 1200; // 1.2s tracking window
 
   public addSample(landmarks: NormalizedLandmark[], now: number = performance.now()): void {
     if (!landmarks || landmarks.length < 21) return;
@@ -54,7 +54,7 @@ class HandMotionTracker {
   }
 
   /**
-   * Detects waving motion (repetitive left-right horizontal oscillation)
+   * Detects waving motion (repetitive left-right horizontal oscillation) -> Merhaba
    */
   public isWaving(): boolean {
     if (this.history.length < 6) return false;
@@ -87,31 +87,30 @@ class HandMotionTracker {
   }
 
   /**
-   * Detects rocking motion (side-to-side tilting or twisting)
+   * Detects dynamic outward / forward arc from chest -> Nasılsın
+   * Movement starts near chest (Y > 0.35) and pushes forward toward camera (delta Z < -0.035)
    */
-  public isRocking(): boolean {
+  public isForwardArcFromChest(): boolean {
     if (this.history.length < 6) return false;
 
-    let yReversals = 0;
-    let lastDir = 0;
-    let lastExtremumY = this.history[0].middleTipY;
+    const newest = this.history[this.history.length - 1];
+    const lookbackTime = newest.time - 600;
+    const window = this.history.filter((s) => s.time >= lookbackTime);
+    if (window.length < 4) return false;
 
-    for (let i = 1; i < this.history.length; i++) {
-      const dy = this.history[i].middleTipY - this.history[i - 1].middleTipY;
-      if (Math.abs(dy) > 0.002) {
-        const cur = dy > 0 ? 1 : -1;
-        if (lastDir !== 0 && cur !== lastDir) {
-          const stroke = Math.abs(this.history[i - 1].middleTipY - lastExtremumY);
-          if (stroke >= 0.02) {
-            yReversals++;
-            lastExtremumY = this.history[i - 1].middleTipY;
-          }
-        }
-        lastDir = cur;
-      }
-    }
+    const oldest = window[0];
+    const dt = newest.time - oldest.time;
+    if (dt < 200) return false;
 
-    return yReversals >= 2;
+    // In MediaPipe normalized coordinates, negative delta Z means moving forward toward camera
+    const deltaWristZ = newest.wristZ - oldest.wristZ;
+    const deltaTipZ = newest.middleTipZ - oldest.middleTipZ;
+
+    const isForward = (deltaWristZ < -0.032 || deltaTipZ < -0.038);
+    const startsAtChest = oldest.wristY > 0.32;
+    const notWaving = !this.isWaving();
+
+    return isForward && startsAtChest && notWaving;
   }
 }
 
@@ -146,7 +145,7 @@ function areFingersExtended(landmarks: NormalizedLandmark[]): {
 
 /**
  * Maps MediaPipe gesture categories and hand landmarks to recognized sign language concepts,
- * distinguishing dynamic gestures (waving "Merhaba") from static gestures ("Open Palm", "Ben", "Sen", "İyiyim", "Nasılsın").
+ * distinguishing dynamic gestures ("Merhaba", "Nasılsın") from static gestures ("Open Palm", "Ben", "Sen", "İyiyim").
  */
 export function interpretSignLanguage(
   gestures: GestureCategory[][],
@@ -181,7 +180,7 @@ export function interpretSignLanguage(
     const isThumbOnly = ext.thumb && !ext.index && !ext.middle && !ext.ring && !ext.pinky;
 
     // 1. DYNAMIC VS STATIC OPEN PALM SEPARATION:
-    // If the hand is open, check if it's waving (Merhaba) vs static (Open Palm)
+    // "Open Palm" is strictly static. "Merhaba" is horizontal waving. "Nasılsın" is dynamic forward arc from chest.
     if (isOpenHand) {
       if (tracker.isWaving()) {
         predictions.push({
@@ -193,43 +192,51 @@ export function interpretSignLanguage(
           timestamp: Date.now(),
         });
         continue;
-      } else {
+      }
+
+      if (tracker.isForwardArcFromChest()) {
         predictions.push({
-          sign: "Open Palm",
-          translatedText: "Açık El / Dur (Open Palm)",
-          confidence: topGesture?.score ? Math.round(topGesture.score * 100) : 90,
+          sign: "Nasılsın",
+          translatedText: "Nasılsın? (How are you?)",
+          confidence: 92,
           handedness,
           landmarks: handLandmarks,
           timestamp: Date.now(),
         });
         continue;
       }
+
+      // Static and stationary open hand -> Strictly "Open Palm"
+      predictions.push({
+        sign: "Open Palm",
+        translatedText: "Açık El / Dur (Open Palm)",
+        confidence: topGesture?.score ? Math.round(topGesture.score * 100) : 90,
+        handedness,
+        landmarks: handLandmarks,
+        timestamp: Date.now(),
+      });
+      continue;
     }
 
-    // 2. "BEN" (ME) VS "SEN" (YOU) VS "POINTING UP" (BIR):
-    if (isSingleIndex || topGesture?.categoryName === "Pointing_Up") {
-      const vz = (handLandmarks[8].z || 0) - (handLandmarks[5].z || 0);
+    // 2. "BEN" (ME) VS "SEN" (YOU) VS "POINTING UP" (BIR) - VECTOR ORIENTATION:
+    if (isSingleIndex || (topGesture?.categoryName === "Pointing_Up" && !ext.middle)) {
+      const vx = handLandmarks[8].x - handLandmarks[5].x;
       const vy = handLandmarks[8].y - handLandmarks[5].y;
+      const vz = (handLandmarks[8].z || 0) - (handLandmarks[5].z || 0);
 
-      // Pointing towards self / chest: positive Z (away from camera / towards signer) or pointing down toward chest
-      if (vz > 0.03 || (vy > 0.05 && (handLandmarks[8].z || 0) > (handLandmarks[6].z || 0))) {
-        predictions.push({
-          sign: "Ben",
-          translatedText: "Ben (Me / I)",
-          confidence: 90,
-          handedness,
-          landmarks: handLandmarks,
-          timestamp: Date.now(),
-        });
-        continue;
-      }
+      const len = Math.sqrt(vx * vx + vy * vy + vz * vz) || 0.001;
+      const nx = vx / len;
+      const ny = vy / len;
+      const nz = vz / len;
 
-      // Pointing forward toward camera / viewer: negative Z (closer to camera than MCP)
-      if (vz < -0.035 || ((handLandmarks[8].z || 0) < (handLandmarks[6].z || 0) - 0.02)) {
+      const pip_tip_z = (handLandmarks[8].z || 0) - (handLandmarks[6].z || 0);
+
+      // "SEN" (YOU): Index finger points forward toward camera/viewer (strongly negative Z)
+      if (nz < -0.38 || (vz < -0.032 && pip_tip_z < -0.012)) {
         predictions.push({
           sign: "Sen",
           translatedText: "Sen (You)",
-          confidence: 90,
+          confidence: Math.min(96, Math.round(86 + Math.abs(nz) * 14)),
           handedness,
           landmarks: handLandmarks,
           timestamp: Date.now(),
@@ -237,7 +244,23 @@ export function interpretSignLanguage(
         continue;
       }
 
-      // Otherwise pointing straight up
+      // "BEN" (ME / I): Index finger points towards self / chest (positive Z or downward toward chest)
+      const isPointingInwardDepth = nz > 0.18 || (vz > 0.022 && pip_tip_z > 0.008);
+      const isPointingDownChest = ny > 0.32 && (handLandmarks[8].y > handLandmarks[0].y - 0.05) && vz > -0.02;
+
+      if (isPointingInwardDepth || isPointingDownChest) {
+        predictions.push({
+          sign: "Ben",
+          translatedText: "Ben (Me / I)",
+          confidence: Math.min(96, Math.round(86 + Math.max(nz, ny) * 14)),
+          handedness,
+          landmarks: handLandmarks,
+          timestamp: Date.now(),
+        });
+        continue;
+      }
+
+      // Otherwise pointing straight up into air
       predictions.push({
         sign: "Pointing Up",
         translatedText: "Bir / Yukarı (Number One)",
@@ -262,20 +285,7 @@ export function interpretSignLanguage(
       continue;
     }
 
-    // 4. "NASILSIN": Rocking / questioning palm gesture
-    if (tracker.isRocking() && (ext.index || ext.middle)) {
-      predictions.push({
-        sign: "Nasılsın",
-        translatedText: "Nasılsın? (How are you?)",
-        confidence: 86,
-        handedness,
-        landmarks: handLandmarks,
-        timestamp: Date.now(),
-      });
-      continue;
-    }
-
-    // 5. STANDARD MEDIAPIPE GESTURES FALLBACK
+    // 4. STANDARD MEDIAPIPE GESTURES FALLBACK
     if (topGesture && topGesture.categoryName !== "None") {
       const dictEntry = SIGN_DICTIONARY[topGesture.categoryName];
       const signLabel = topGesture.categoryName.replace(/_/g, " ");
@@ -294,4 +304,5 @@ export function interpretSignLanguage(
 
   return predictions;
 }
+
 

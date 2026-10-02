@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { SignPrediction } from "../lib/mediapipe/types";
 import { SignLanguage, SignItem } from "../lib/signLibrary";
+import { UIAppLanguage } from "./SettingsMenuModal";
+import { translateSign } from "../hooks/useTranslation";
 import { Volume2, VolumeX, X, Sparkles } from "lucide-react";
 
 interface PredictionBannerProps {
@@ -10,6 +12,7 @@ interface PredictionBannerProps {
   isPaused: boolean;
   isLoadingModel: boolean;
   activeLanguage?: SignLanguage;
+  uiLanguage?: UIAppLanguage;
   practiceSign?: SignItem | null;
   onClearPracticeSign?: () => void;
   logoSrc?: string;
@@ -19,6 +22,7 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
   predictions,
   isPaused,
   activeLanguage = "TID",
+  uiLanguage = "tr",
   practiceSign,
   onClearPracticeSign,
   logoSrc,
@@ -28,22 +32,28 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
 
   const topPrediction = predictions[0];
 
-  // Text to speech for new predictions
+  // Text to speech for new predictions in the user's active UI language
   useEffect(() => {
     if (!topPrediction || topPrediction.confidence < 70 || isPaused) return;
 
-    const signName = topPrediction.sign;
+    const translatedSign = translateSign(topPrediction.sign, uiLanguage);
 
     if (speechEnabled && typeof window !== "undefined" && "speechSynthesis" in window) {
-      if (lastSpoken !== signName) {
-        const utterance = new SpeechSynthesisUtterance(signName);
-        utterance.lang = activeLanguage === "ASL" ? "en-US" : "tr-TR";
+      if (lastSpoken !== translatedSign) {
+        const utterance = new SpeechSynthesisUtterance(translatedSign);
+        const langCodes: Record<UIAppLanguage, string> = {
+          tr: "tr-TR",
+          en: "en-US",
+          de: "de-DE",
+          it: "it-IT",
+        };
+        utterance.lang = langCodes[uiLanguage] || (activeLanguage === "ASL" ? "en-US" : "tr-TR");
         utterance.rate = 1.0;
         window.speechSynthesis.speak(utterance);
-        setLastSpoken(signName);
+        setLastSpoken(translatedSign);
       }
     }
-  }, [topPrediction, speechEnabled, lastSpoken, isPaused, activeLanguage]);
+  }, [topPrediction, speechEnabled, lastSpoken, isPaused, activeLanguage, uiLanguage]);
 
   return (
     <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-[calc(env(safe-area-inset-top)+14px)] flex flex-col gap-3 pointer-events-none">
@@ -116,7 +126,7 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
       {topPrediction && (
         <div className="self-center bg-black/30 backdrop-blur-2xl border border-white/15 px-4 py-1.5 rounded-full text-center shadow-2xl animate-in zoom-in-95 pointer-events-auto flex items-center gap-2.5">
           <span className="text-xs font-black tracking-wide text-white">
-            {topPrediction.sign}
+            {translateSign(topPrediction.sign, uiLanguage)}
           </span>
           <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
             %{topPrediction.confidence}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SignPrediction } from "../lib/mediapipe/types";
 import { SignLanguage } from "../lib/signLibrary";
+import { UIAppLanguage } from "../components/SettingsMenuModal";
+import { translateSign } from "./useTranslation";
 
 export interface SentenceBuilderState {
   sentence: string;
@@ -17,8 +19,8 @@ export interface SentenceBuilderState {
 
 const HOLD_DURATION_MS = 1200; // 1.2 seconds hold time required to commit
 
-// Helper to extract a single letter / word from gesture name
-function cleanSignChar(sign: string): string {
+// Helper to extract and translate a single letter / word from gesture name based on active UI language
+function cleanSignChar(sign: string, uiLang: UIAppLanguage = "tr"): string {
   const s = sign.trim();
   // Check if it's "Letter X" or "X Harfi"
   const letterMatch = s.match(/(?:Letter|Harfi|Harf)\s*([A-Za-zÇĞİÖŞÜçğıöşü])/i);
@@ -26,29 +28,10 @@ function cleanSignChar(sign: string): string {
     return letterMatch[1].toUpperCase();
   }
 
-  // Common gesture mapping with natural Turkish vocabulary
-  const commonMap: Record<string, string> = {
-    Victory: "V",
-    Peace: "Barış",
-    Thumb_Up: "İyiyim",
-    Thumb_Down: "Hayır",
-    Open_Palm: "Açık El",
-    "Open Palm": "Açık El",
-    Closed_Fist: "S",
-    Pointing_Up: "Bir",
-    "Pointing Up": "Bir",
-    ILoveYou: "Seni Seviyorum",
-    Merhaba: "Merhaba",
-    Nasilsin: "Nasılsın",
-    Nasılsın: "Nasılsın",
-    Ben: "Ben",
-    Sen: "Sen",
-    İyiyim: "İyiyim",
-    Iyiyim: "İyiyim",
-  };
-
-  if (commonMap[s]) {
-    return commonMap[s];
+  // Use dynamic i18n sign translation
+  const translated = translateSign(s, uiLang);
+  if (translated && translated !== s) {
+    return translated;
   }
 
   // If already a single character or short word
@@ -56,36 +39,83 @@ function cleanSignChar(sign: string): string {
     return s.toUpperCase();
   }
 
-  return s;
+  return translated || s;
 }
 
 /**
- * Intelligent Turkish Grammar Refinement Helper
- * Cleans up raw sign sequences into natural, coherent sentences with proper spacing
+ * Intelligent Multilingual Grammar Refinement Helper
+ * Cleans up raw sign sequences into natural, coherent sentences with proper spacing across TR, EN, DE, IT
  */
-function refineTurkishSentence(raw: string): string {
+function refineSentenceByLanguage(raw: string, uiLang: UIAppLanguage = "tr"): string {
   if (!raw) return "";
 
   let text = raw.trim();
 
-  // Word replacement dictionary for TİD -> Natural Turkish sentence flow
-  const tidGrammarRules: [RegExp, string][] = [
-    [/\bMERHABA\s+NASILSIN\b/gi, "Merhaba, nasılsın?"],
-    [/\bSEN\s+NASILSIN\b/gi, "Sen nasılsın?"],
-    [/\bNASILSIN\s+SEN\b/gi, "Nasılsın?"],
-    [/\bBEN\s+İYİYİM\b/gi, "Ben iyiyim"],
-    [/\bBEN\s+İYİ\b/gi, "Ben iyiyim"],
-    [/\bBEN\s+SEN\b/gi, "Ben ve sen"],
-    [/\bİYİYİM\s+SEN\b/gi, "İyiyim, sen?"],
-    [/\bBEN\s+GİTMEK\b/gi, "Ben gidiyorum"],
-    [/\bSEN\s+GELMEK\b/gi, "Sen geliyor musun?"],
-    [/\bBEN\s+SEVMEK\s+SENI\b/gi, "Seni seviyorum"],
-    [/\bTEŞEKKÜR\s+EDERİM\b/gi, "Teşekkür ederim"],
-    [/\bSAĞ\s+OL\b/gi, "Sağ ol"],
-  ];
+  // 1. TURKISH RULES
+  if (uiLang === "tr") {
+    const tidGrammarRules: [RegExp, string][] = [
+      [/\bMERHABA\s+NASILSIN\b/gi, "Merhaba, nasılsın?"],
+      [/\bSEN\s+NASILSIN\b/gi, "Sen nasılsın?"],
+      [/\bNASILSIN\s+SEN\b/gi, "Nasılsın?"],
+      [/\bBEN\s+İYİYİM\b/gi, "Ben iyiyim"],
+      [/\bBEN\s+İYİ\b/gi, "Ben iyiyim"],
+      [/\bBEN\s+SEN\b/gi, "Ben ve sen"],
+      [/\bİYİYİM\s+SEN\b/gi, "İyiyim, sen?"],
+      [/\bBEN\s+GİTMEK\b/gi, "Ben gidiyorum"],
+      [/\bSEN\s+GELMEK\b/gi, "Sen geliyor musun?"],
+      [/\bBEN\s+SEVMEK\s+SENI\b/gi, "Seni seviyorum"],
+      [/\bTEŞEKKÜR\s+EDERİM\b/gi, "Teşekkür ederim"],
+      [/\bSAĞ\s+OL\b/gi, "Sağ ol"],
+    ];
 
-  for (const [pattern, replacement] of tidGrammarRules) {
-    text = text.replace(pattern, replacement);
+    for (const [pattern, replacement] of tidGrammarRules) {
+      text = text.replace(pattern, replacement);
+    }
+  }
+
+  // 2. ENGLISH RULES
+  if (uiLang === "en") {
+    const enGrammarRules: [RegExp, string][] = [
+      [/\bHELLO\s+HOW ARE YOU\b/gi, "Hello, how are you?"],
+      [/\bYOU\s+HOW ARE YOU\b/gi, "How are you?"],
+      [/\b(?:ME|I)\s+I'M FINE\b/gi, "I am fine"],
+      [/\bI'M FINE\s+YOU\b/gi, "I'm fine, and you?"],
+      [/\b(?:ME|I)\s+YOU\b/gi, "You and me"],
+    ];
+
+    for (const [pattern, replacement] of enGrammarRules) {
+      text = text.replace(pattern, replacement);
+    }
+  }
+
+  // 3. GERMAN RULES
+  if (uiLang === "de") {
+    const deGrammarRules: [RegExp, string][] = [
+      [/\bHALLO\s+WIE GEHT'S\b/gi, "Hallo, wie geht's?"],
+      [/\bDU\s+WIE GEHT'S\b/gi, "Wie geht's dir?"],
+      [/\bICH\s+MIR GEHT'S GUT\b/gi, "Mir geht's gut"],
+      [/\bMIR GEHT'S GUT\s+DU\b/gi, "Mir geht's gut, und dir?"],
+      [/\bICH\s+DU\b/gi, "Du und ich"],
+    ];
+
+    for (const [pattern, replacement] of deGrammarRules) {
+      text = text.replace(pattern, replacement);
+    }
+  }
+
+  // 4. ITALIAN RULES
+  if (uiLang === "it") {
+    const itGrammarRules: [RegExp, string][] = [
+      [/\bCIAO\s+COME STAI\b/gi, "Ciao, come stai?"],
+      [/\bTU\s+COME STAI\b/gi, "Come stai?"],
+      [/\bIO\s+STO BENE\b/gi, "Sto bene"],
+      [/\bSTO BENE\s+TU\b/gi, "Sto bene, e tu?"],
+      [/\bIO\s+TU\b/gi, "Tu ed io"],
+    ];
+
+    for (const [pattern, replacement] of itGrammarRules) {
+      text = text.replace(pattern, replacement);
+    }
   }
 
   return text;
@@ -94,7 +124,8 @@ function refineTurkishSentence(raw: string): string {
 export function useSentenceBuilder(
   predictions: SignPrediction[],
   isPaused: boolean,
-  activeLanguage: SignLanguage = "TID"
+  activeLanguage: SignLanguage = "TID",
+  uiLanguage: UIAppLanguage = "tr"
 ): SentenceBuilderState {
   const [sentence, setSentence] = useState<string>("");
   const [holdingSign, setHoldingSign] = useState<string | null>(null);
@@ -108,7 +139,7 @@ export function useSentenceBuilder(
   const topPrediction = predictions[0];
   const currentSign = topPrediction && topPrediction.confidence >= 65 ? topPrediction.sign : null;
 
-  // Append character or word to sentence with smart auto-spacing
+  // Append character or word to sentence with smart auto-spacing and grammar
   const appendChar = useCallback((token: string) => {
     if (!token) return;
 
@@ -131,9 +162,9 @@ export function useSentenceBuilder(
       // Automatically insert space before adding full words or multi-char tokens
       const needsSpace = !prev.endsWith(" ");
       const updated = needsSpace ? `${prev} ${token}` : prev + token;
-      return activeLanguage === "TID" ? refineTurkishSentence(updated) : updated;
+      return refineSentenceByLanguage(updated, uiLanguage);
     });
-  }, [activeLanguage]);
+  }, [uiLanguage]);
 
   // Real-time gesture hold & commit loop
   useEffect(() => {
@@ -145,7 +176,7 @@ export function useSentenceBuilder(
       return;
     }
 
-    const cleaned = cleanSignChar(currentSign);
+    const cleaned = cleanSignChar(currentSign, uiLanguage);
 
     // If holding a new/different sign
     if (holdingSign !== cleaned) {
@@ -208,11 +239,17 @@ export function useSentenceBuilder(
       if (!sentence.trim() || typeof window === "undefined" || !("speechSynthesis" in window)) return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(sentence.trim());
-      utterance.lang = lang === "ASL" ? "en-US" : "tr-TR";
+      const langCodes: Record<UIAppLanguage, string> = {
+        tr: "tr-TR",
+        en: "en-US",
+        de: "de-DE",
+        it: "it-IT",
+      };
+      utterance.lang = langCodes[uiLanguage] || (lang === "ASL" ? "en-US" : "tr-TR");
       utterance.rate = 0.95;
       window.speechSynthesis.speak(utterance);
     },
-    [sentence, activeLanguage]
+    [sentence, uiLanguage, activeLanguage]
   );
 
   // Copy sentence to clipboard
