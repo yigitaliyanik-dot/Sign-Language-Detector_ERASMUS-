@@ -27,30 +27,76 @@ interface HistorySample {
   indexTipX: number;
   indexTipY: number;
   indexTipZ: number;
+  handSize2D: number;
 }
 
 class HandMotionTracker {
   private history: HistorySample[] = [];
-  private readonly maxWindowMs = 1200; // 1.2s tracking window
+  private readonly maxWindowMs = 1400; // 1.4s tracking window
+  private lastForwardStrokeTime: number = 0;
 
   public addSample(landmarks: NormalizedLandmark[], now: number = performance.now()): void {
     if (!landmarks || landmarks.length < 21) return;
 
+    const wrist = landmarks[0];
+    const middleTip = landmarks[12];
+    const handSize2D = Math.sqrt(
+      Math.pow(middleTip.x - wrist.x, 2) + Math.pow(middleTip.y - wrist.y, 2)
+    );
+
     this.history.push({
       time: now,
-      wristX: landmarks[0].x,
-      wristY: landmarks[0].y,
-      wristZ: landmarks[0].z || 0,
-      middleTipX: landmarks[12].x,
-      middleTipY: landmarks[12].y,
-      middleTipZ: landmarks[12].z || 0,
+      wristX: wrist.x,
+      wristY: wrist.y,
+      wristZ: wrist.z || 0,
+      middleTipX: middleTip.x,
+      middleTipY: middleTip.y,
+      middleTipZ: middleTip.z || 0,
       indexTipX: landmarks[8].x,
       indexTipY: landmarks[8].y,
       indexTipZ: landmarks[8].z || 0,
+      handSize2D,
     });
 
     const cutoff = now - this.maxWindowMs;
     this.history = this.history.filter((s) => s.time >= cutoff);
+
+    // Evaluate forward push trajectory from chest area
+    this.evaluateForwardPushTrajectory(now);
+  }
+
+  private evaluateForwardPushTrajectory(now: number): void {
+    if (this.history.length < 5) return;
+    const newest = this.history[this.history.length - 1];
+
+    // Search for a start point in the chest area within the last 200ms - 850ms
+    for (let i = 0; i < this.history.length - 2; i++) {
+      const start = this.history[i];
+      const dt = newest.time - start.time;
+      if (dt < 180 || dt > 850) continue;
+
+      // Check if start position was in the chest region (Y > 0.36)
+      const startedInChest = start.wristY > 0.36;
+      if (!startedInChest) continue;
+
+      // Check forward movement towards camera:
+      // 1. Depth change in MediaPipe coordinates (negative delta Z)
+      const deltaWristZ = newest.wristZ - start.wristZ;
+      const deltaTipZ = newest.middleTipZ - start.middleTipZ;
+      const isDepthForward = (deltaWristZ < -0.028 || deltaTipZ < -0.034);
+
+      // 2. Perspective scale expansion as hand moves forward
+      const scaleRatio = newest.handSize2D / (start.handSize2D || 0.001);
+      const isScaleForward = scaleRatio > 1.14;
+
+      // 3. Hand moves forward / level (not just dropping to floor)
+      const notFalling = newest.wristY <= start.wristY + 0.12;
+
+      if ((isDepthForward || isScaleForward) && notFalling && !this.isWaving()) {
+        this.lastForwardStrokeTime = now;
+        break;
+      }
+    }
   }
 
   /**
@@ -87,30 +133,10 @@ class HandMotionTracker {
   }
 
   /**
-   * Detects dynamic outward / forward arc from chest -> Nasılsın
-   * Movement starts near chest (Y > 0.35) and pushes forward toward camera (delta Z < -0.035)
+   * Returns true if hands were pushed forward from the chest area in an open forward trajectory -> Nasılsın
    */
-  public isForwardArcFromChest(): boolean {
-    if (this.history.length < 6) return false;
-
-    const newest = this.history[this.history.length - 1];
-    const lookbackTime = newest.time - 600;
-    const window = this.history.filter((s) => s.time >= lookbackTime);
-    if (window.length < 4) return false;
-
-    const oldest = window[0];
-    const dt = newest.time - oldest.time;
-    if (dt < 200) return false;
-
-    // In MediaPipe normalized coordinates, negative delta Z means moving forward toward camera
-    const deltaWristZ = newest.wristZ - oldest.wristZ;
-    const deltaTipZ = newest.middleTipZ - oldest.middleTipZ;
-
-    const isForward = (deltaWristZ < -0.032 || deltaTipZ < -0.038);
-    const startsAtChest = oldest.wristY > 0.32;
-    const notWaving = !this.isWaving();
-
-    return isForward && startsAtChest && notWaving;
+  public isForwardPushFromChest(now: number = performance.now()): boolean {
+    return (now - this.lastForwardStrokeTime) < 950;
   }
 }
 
@@ -180,7 +206,9 @@ export function interpretSignLanguage(
     const isThumbOnly = ext.thumb && !ext.index && !ext.middle && !ext.ring && !ext.pinky;
 
     // 1. DYNAMIC VS STATIC OPEN PALM SEPARATION:
-    // "Open Palm" is strictly static. "Merhaba" is horizontal waving. "Nasılsın" is dynamic forward arc from chest.
+    // - "Merhaba": Open hands waving side-to-side (horizontal oscillation)
+    // - "Nasılsın": Open hands pushed forward from the chest towards the camera (forward trajectory)
+    // - "Open Palm": Hands held steady/static in the air without forward stroke from chest
     if (isOpenHand) {
       if (tracker.isWaving()) {
         predictions.push({
@@ -194,11 +222,11 @@ export function interpretSignLanguage(
         continue;
       }
 
-      if (tracker.isForwardArcFromChest()) {
+      if (tracker.isForwardPushFromChest(now)) {
         predictions.push({
           sign: "Nasılsın",
           translatedText: "Nasılsın? (How are you?)",
-          confidence: 92,
+          confidence: 93,
           handedness,
           landmarks: handLandmarks,
           timestamp: Date.now(),
@@ -206,7 +234,7 @@ export function interpretSignLanguage(
         continue;
       }
 
-      // Static and stationary open hand -> Strictly "Open Palm"
+      // Static and stationary open hand held in air -> Strictly "Open Palm"
       predictions.push({
         sign: "Open Palm",
         translatedText: "Açık El / Dur (Open Palm)",
