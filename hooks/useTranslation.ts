@@ -147,7 +147,9 @@ export const translations: Translations = {
 
 export const useTranslation = (lang: UIAppLanguage) => {
   const t = (key: keyof typeof translations["tr"]): string => {
-    return translations[lang][key] || key;
+    const value = translations[lang]?.[key] || translations["tr"]?.[key] || key;
+    return String(value);
   };
   return { t };
 };
+
