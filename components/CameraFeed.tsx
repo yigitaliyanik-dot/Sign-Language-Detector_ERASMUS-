@@ -10,6 +10,7 @@ interface CameraFeedProps {
   hasStarted: boolean;
   facingMode: "user" | "environment";
   error: string | null;
+  hasHandDetected?: boolean;
   onStartCamera: () => void;
   onRetry: () => void;
   onToggleFacingMode?: () => void;
@@ -22,16 +23,17 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
   hasStarted,
   facingMode,
   error,
+  hasHandDetected = false,
   onStartCamera,
   onRetry,
   onToggleFacingMode,
 }) => {
-  // Only mirror if using front/selfie camera ('user')
+  // Mirroring for selfie camera
   const isMirrored = facingMode === "user";
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-      {/* Full Viewport Background Video Element (No outer frame limits or black letterboxing) */}
+      {/* Background Video Stream */}
       <video
         ref={videoRef}
         playsInline={true}
@@ -42,43 +44,45 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
         } ${isStreaming ? "opacity-100" : "opacity-0"}`}
       />
 
-      {/* Floating HUD Target Overlay Guideline (Ultra-light, non-intrusive) */}
+      {/* 2. INTERACTIVE HAND DETECTION ZONE WITH NEON GLOW LOGIC */}
       {isStreaming && (
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
-          <div className="w-full max-w-sm h-3/4 sm:h-4/5 border border-dashed border-sky-400/20 rounded-3xl flex flex-col justify-between p-4 transition-all">
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-6 z-10">
+          <div
+            className={`w-full max-w-xs sm:max-w-sm h-3/4 sm:h-4/5 rounded-3xl border-2 transition-all duration-500 flex flex-col justify-between p-4 ${
+              hasHandDetected
+                ? "border-sky-400 bg-sky-400/5 shadow-[0_0_35px_rgba(56,189,248,0.45)] scale-[1.01]"
+                : "border-dashed border-white/20 bg-black/10 opacity-60 shadow-none scale-100"
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold tracking-wider uppercase text-sky-300/70 bg-black/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 border border-white/10">
-                <Focus className="w-3 h-3 text-sky-400" />
-                El Algılama Alanı
+              <span
+                className={`text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md border transition-all duration-300 ${
+                  hasHandDetected
+                    ? "bg-sky-500/20 text-sky-300 border-sky-400/40 shadow-sm"
+                    : "bg-black/30 text-slate-400 border-white/10"
+                }`}
+              >
+                <Focus className={`w-3.5 h-3.5 ${hasHandDetected ? "text-sky-400 animate-pulse" : "text-slate-400"}`} />
+                {hasHandDetected ? "El Algılandı (Aktif)" : "El Algılama Alanı"}
               </span>
             </div>
-            <span className="text-[10px] text-slate-300/60 bg-black/20 backdrop-blur-md px-3 py-1 rounded-full self-end border border-white/10">
-              Kameraya rahat açıda durun
+
+            <span
+              className={`text-[10px] font-medium px-3 py-1 rounded-full self-end backdrop-blur-md border transition-all duration-300 ${
+                hasHandDetected
+                  ? "bg-sky-500/20 text-sky-200 border-sky-400/40"
+                  : "bg-black/30 text-slate-400 border-white/10"
+              }`}
+            >
+              {hasHandDetected ? "İşaret yapılıyor..." : "Elinizi çerçeveye getirin"}
             </span>
           </div>
         </div>
       )}
 
-      {/* Floating Quick Flip Camera Button */}
-      {isStreaming && onToggleFacingMode && (
-        <div className="absolute top-4 right-4 z-20 pointer-events-auto">
-          <button
-            onClick={onToggleFacingMode}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-black/30 backdrop-blur-xl border border-white/15 text-slate-200 hover:text-white hover:bg-black/50 active:scale-95 transition-all shadow-lg"
-            title={`Kamerayı Değiştir: ${facingMode === "environment" ? "Ön Kamera" : "Arka Kamera"}`}
-            aria-label="Kamerayı Değiştir"
-          >
-            <FlipHorizontal className="w-4 h-4 text-sky-400" />
-            <span className="text-xs font-bold">
-              {facingMode === "environment" ? "Arka" : "Ön"}
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* STATE 1: Initial Start Screen (Transparent Liquid Glass Overlay) */}
+      {/* STATE 1: Initial Start Screen */}
       {!hasStarted && !error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/75 backdrop-blur-2xl text-white p-6 z-30">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-2xl text-white p-6 z-30">
           <div className="relative mb-6">
             <div className="w-24 h-24 rounded-3xl bg-sky-500/10 border border-white/20 flex items-center justify-center backdrop-blur-md shadow-2xl">
               <Camera className="w-12 h-12 text-sky-400" />
@@ -95,7 +99,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             MediaPipe ve TensorFlow.js ile anlık, yerel işaret dili çevirisi.
           </p>
 
-          {/* Pre-start camera toggle option */}
           <button
             type="button"
             onClick={onToggleFacingMode}
@@ -162,5 +165,3 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
     </div>
   );
 };
-
-

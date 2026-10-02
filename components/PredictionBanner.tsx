@@ -3,27 +3,25 @@
 import React, { useEffect, useState } from "react";
 import { SignPrediction } from "../lib/mediapipe/types";
 import { SignLanguage, SignItem } from "../lib/signLibrary";
-import { Volume2, VolumeX, X } from "lucide-react";
+import { Volume2, VolumeX, X, Sparkles } from "lucide-react";
 
 interface PredictionBannerProps {
   predictions: SignPrediction[];
-  fps: number;
   isPaused: boolean;
   isLoadingModel: boolean;
   activeLanguage?: SignLanguage;
-  onToggleLanguage?: () => void;
   practiceSign?: SignItem | null;
   onClearPracticeSign?: () => void;
+  logoSrc?: string;
 }
 
 export const PredictionBanner: React.FC<PredictionBannerProps> = ({
   predictions,
   isPaused,
-  isLoadingModel,
   activeLanguage = "TID",
-  onToggleLanguage,
   practiceSign,
   onClearPracticeSign,
+  logoSrc,
 }) => {
   const [speechEnabled, setSpeechEnabled] = useState<boolean>(true);
   const [lastSpoken, setLastSpoken] = useState<string>("");
@@ -49,51 +47,41 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
 
   return (
     <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-[calc(env(safe-area-inset-top)+14px)] flex flex-col gap-3 pointer-events-none">
-      {/* 1. MINIMALIST TOP BAR: Minimal status dot & language toggle */}
+      {/* 3. MINIMALIST TOP BAR: Logo Slot (Left) & Audio Toggle (Right) */}
       <div className="flex items-center justify-between pointer-events-auto">
-        {/* Minimal Glowing Active Status Indicator */}
-        <div className="flex items-center gap-2 bg-black/20 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isLoadingModel ? "bg-amber-400" : isPaused ? "bg-slate-400" : "bg-emerald-400"
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                isLoadingModel ? "bg-amber-500" : isPaused ? "bg-slate-500" : "bg-emerald-500"
-              }`}
-            />
-          </span>
-          <span className="text-[11px] font-medium tracking-wide text-slate-200">
-            {isLoadingModel ? "Yükleniyor" : isPaused ? "Duraklatıldı" : "TİD Canlı"}
-          </span>
-        </div>
-
-        {/* Minimal Controls: Language Switcher & Mute */}
+        {/* Left: Custom Logo Placeholder / App Badge */}
         <div className="flex items-center gap-2">
-          {onToggleLanguage && (
-            <button
-              onClick={onToggleLanguage}
-              className="flex items-center gap-1 bg-black/20 backdrop-blur-xl border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg transition-all active:scale-95"
-              title="Dili Değiştir"
-            >
-              <span>{activeLanguage === "ASL" ? "🇺🇸 ASL" : "🇹🇷 TİD"}</span>
-            </button>
+          {logoSrc ? (
+            <img
+              src={logoSrc}
+              alt="App Logo"
+              className="h-8 w-auto object-contain drop-shadow-md rounded-lg"
+            />
+          ) : (
+            <div className="flex items-center gap-2 bg-black/20 backdrop-blur-2xl border border-white/15 px-3 py-1.5 rounded-full shadow-lg">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-sm">
+                <Sparkles className="w-3 h-3" />
+              </div>
+              <span className="text-xs font-black tracking-tight text-white">
+                SignVision
+              </span>
+            </div>
           )}
-
-          <button
-            onClick={() => setSpeechEnabled(!speechEnabled)}
-            className="p-2 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 text-slate-200 hover:text-white transition-all active:scale-95 shadow-lg"
-            title={speechEnabled ? "Sesli okumayı kapat" : "Sesli okumayı aç"}
-          >
-            {speechEnabled ? (
-              <Volume2 className="w-3.5 h-3.5 text-sky-400" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-            )}
-          </button>
         </div>
+
+        {/* Right: Minimalist Audio Toggle Button */}
+        <button
+          onClick={() => setSpeechEnabled(!speechEnabled)}
+          className="p-2.5 rounded-full bg-black/20 backdrop-blur-2xl border border-white/15 text-slate-200 hover:text-white active:scale-95 transition-all shadow-lg"
+          title={speechEnabled ? "Sesli okumayı kapat" : "Sesli okumayı aç"}
+          aria-label="Ses Ayarı"
+        >
+          {speechEnabled ? (
+            <Volume2 className="w-4 h-4 text-sky-400" />
+          ) : (
+            <VolumeX className="w-4 h-4 text-slate-400" />
+          )}
+        </button>
       </div>
 
       {/* Target Practice Banner (when a sign is chosen from library) */}
@@ -124,7 +112,7 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
         </div>
       )}
 
-      {/* Real-time Floating Detection Pill (Non-intrusive) */}
+      {/* Real-time Floating Detection Pill */}
       {topPrediction && (
         <div className="self-center bg-black/30 backdrop-blur-2xl border border-white/15 px-4 py-1.5 rounded-full text-center shadow-2xl animate-in zoom-in-95 pointer-events-auto flex items-center gap-2.5">
           <span className="text-xs font-black tracking-wide text-white">
@@ -138,5 +126,3 @@ export const PredictionBanner: React.FC<PredictionBannerProps> = ({
     </div>
   );
 };
-
-

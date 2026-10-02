@@ -12,6 +12,7 @@ import { DetectionCanvas } from "./DetectionCanvas";
 import { PredictionBanner } from "./PredictionBanner";
 import { SentenceOutputBox } from "./SentenceOutputBox";
 import { ControlBar } from "./ControlBar";
+import { SettingsMenuModal, UIAppLanguage } from "./SettingsMenuModal";
 import { MobileNotice } from "./MobileNotice";
 import { DatasetStudio } from "./dataset/DatasetStudio";
 import { SignLibraryModal } from "./SignLibraryModal";
@@ -22,10 +23,14 @@ export const SignLanguageApp: React.FC = () => {
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
   const [isDatasetStudioOpen, setIsDatasetStudioOpen] = useState<boolean>(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState<boolean>(false);
   const [isCustomModelActive, setIsCustomModelActive] = useState<boolean>(false);
 
   // Active sign language (TID = Turkish Sign Language, ASL = American Sign Language)
   const [activeLanguage, setActiveLanguage] = useState<SignLanguage>("TID");
+  // UI App Language (tr = Türkçe, en = English, de = Deutsch, it = Italiano)
+  const [uiLanguage, setUiLanguage] = useState<UIAppLanguage>("tr");
+
   const [practiceSign, setPracticeSign] = useState<SignItem | null>(null);
 
   // Mobile orientation detection
@@ -53,18 +58,15 @@ export const SignLanguageApp: React.FC = () => {
     togglePause,
   } = useHandDetection(videoRef, isStreaming);
 
-  // Toggle active language between ASL and TID
-  const toggleLanguage = () => {
-    setActiveLanguage((prev) => (prev === "ASL" ? "TID" : "ASL"));
-  };
+  // Hand detection presence check for neon glow logic
+  const hasHandDetected = landmarks.length > 0 && landmarks[0]?.length === 21;
 
   // Prioritize custom trained in-browser model when active
   const activePredictions = useMemo(() => {
     if (
       isCustomModelActive &&
       inBrowserTrainer.isReady() &&
-      landmarks.length > 0 &&
-      landmarks[0]?.length === 21
+      hasHandDetected
     ) {
       const customPred = inBrowserTrainer.predict(landmarks[0]);
       if (customPred) {
@@ -80,14 +82,14 @@ export const SignLanguageApp: React.FC = () => {
       }
     }
     return predictions;
-  }, [isCustomModelActive, landmarks, predictions]);
+  }, [isCustomModelActive, landmarks, predictions, hasHandDetected]);
 
-  // Sentence Accumulator with 1.2s Debounce Hold-to-Commit
+  // Sentence Accumulator with 1.2s Debounce Hold-to-Commit & Smart Spacing
   const sentenceBuilder = useSentenceBuilder(activePredictions, isPaused, activeLanguage);
 
   return (
     <main className="relative w-full h-screen max-h-screen overflow-hidden bg-slate-950 flex flex-col select-none touch-none">
-      {/* Real-time Video Stream with mobile start gate & orientation scaling */}
+      {/* Real-time Video Stream with Interactive Neon Hand Detection Zone */}
       <CameraFeed
         videoRef={videoRef}
         isStreaming={isStreaming}
@@ -95,6 +97,7 @@ export const SignLanguageApp: React.FC = () => {
         hasStarted={hasStarted}
         facingMode={facingMode}
         error={cameraError}
+        hasHandDetected={hasHandDetected}
         onStartCamera={() => startCamera(facingMode)}
         onRetry={() => startCamera(facingMode)}
         onToggleFacingMode={toggleFacingMode}
@@ -110,21 +113,19 @@ export const SignLanguageApp: React.FC = () => {
         />
       )}
 
-      {/* Floating HUD: Prediction Banner, Language Switcher & Audio Synthesizer */}
+      {/* Floating Minimalist Top Bar: Logo Slot (Left) & Audio Toggle (Right) */}
       {hasStarted && (
         <PredictionBanner
           predictions={activePredictions}
-          fps={fps}
           isPaused={isPaused}
           isLoadingModel={isLoadingModel}
           activeLanguage={activeLanguage}
-          onToggleLanguage={toggleLanguage}
           practiceSign={practiceSign}
           onClearPracticeSign={() => setPracticeSign(null)}
         />
       )}
 
-      {/* Sentence / Word Accumulator Box with Hold Debounce, Space & Backspace */}
+      {/* Liquid Glass Floating Sentence / Word Bar */}
       {hasStarted && (
         <SentenceOutputBox
           builder={sentenceBuilder}
@@ -132,21 +133,31 @@ export const SignLanguageApp: React.FC = () => {
         />
       )}
 
-      {/* Bottom Control Bar Dock */}
+      {/* Streamlined Bottom Dock: Camera Flip, Pause/Play, Drawer Menu */}
       {hasStarted && (
         <ControlBar
           facingMode={facingMode}
           isPaused={isPaused}
-          showSkeleton={showSkeleton}
           onToggleFacingMode={toggleFacingMode}
           onTogglePause={togglePause}
-          onToggleSkeleton={() => setShowSkeleton((prev) => !prev)}
-          onOpenGuide={() => setIsGuideOpen(true)}
-          onOpenLibrary={() => setIsLibraryOpen(true)}
-          onOpenDatasetStudio={() => setIsDatasetStudioOpen(true)}
-          isCustomModelActive={isCustomModelActive}
+          onOpenSettingsMenu={() => setIsSettingsMenuOpen(true)}
         />
       )}
+
+      {/* New Liquid Glass Drawer / Settings Modal */}
+      <SettingsMenuModal
+        isOpen={isSettingsMenuOpen}
+        onClose={() => setIsSettingsMenuOpen(false)}
+        showSkeleton={showSkeleton}
+        onToggleSkeleton={() => setShowSkeleton((prev) => !prev)}
+        onOpenDatasetStudio={() => setIsDatasetStudioOpen(true)}
+        onOpenLibrary={() => setIsLibraryOpen(true)}
+        activeSignLanguage={activeLanguage}
+        onSelectSignLanguage={setActiveLanguage}
+        uiLanguage={uiLanguage}
+        onSelectUiLanguage={setUiLanguage}
+        isCustomModelActive={isCustomModelActive}
+      />
 
       {/* Permanent ASL & TID Sign Alphabet Library Modal */}
       <SignLibraryModal
@@ -166,7 +177,7 @@ export const SignLanguageApp: React.FC = () => {
         onCustomModelToggled={setIsCustomModelActive}
       />
 
-      {/* Orientation & Quick Guide Notice */}
+      {/* Orientation Notice */}
       <MobileNotice
         isPortrait={isPortrait}
         isMobileDevice={isMobileDevice}
