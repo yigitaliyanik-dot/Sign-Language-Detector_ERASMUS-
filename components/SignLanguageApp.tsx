@@ -101,6 +101,7 @@ export const SignLanguageApp: React.FC = () => {
         onStartCamera={() => startCamera(facingMode)}
         onRetry={() => startCamera(facingMode)}
         onToggleFacingMode={toggleFacingMode}
+        uiLanguage={uiLanguage}
       />
 
       {/* MediaPipe 21 Hand Landmarks Skeleton Overlay Canvas */}
@@ -130,6 +131,7 @@ export const SignLanguageApp: React.FC = () => {
         <SentenceOutputBox
           builder={sentenceBuilder}
           activeLanguage={activeLanguage}
+          uiLanguage={uiLanguage}
         />
       )}
 
@@ -141,6 +143,7 @@ export const SignLanguageApp: React.FC = () => {
           onToggleFacingMode={toggleFacingMode}
           onTogglePause={togglePause}
           onOpenSettingsMenu={() => setIsSettingsMenuOpen(true)}
+          uiLanguage={uiLanguage}
         />
       )}
 

@@ -11,8 +11,10 @@ import {
   BookOpen,
   Sparkles,
   Check,
+  CheckCircle2
 } from "lucide-react";
 import { SignLanguage } from "../lib/signLibrary";
+import { useTranslation } from "../hooks/useTranslation";
 
 export type UIAppLanguage = "tr" | "en" | "de" | "it";
 
@@ -50,6 +52,8 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
   onSelectUiLanguage,
   isCustomModelActive = false,
 }) => {
+  const { t } = useTranslation(uiLanguage);
+
   if (!isOpen) return null;
 
   return (
@@ -62,8 +66,8 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Uygulama Menüsü</h3>
-              <p className="text-xs text-slate-400">Ayarlar & Görsel Modeller</p>
+              <h3 className="text-base font-bold text-white">{t("appMenu")}</h3>
+              <p className="text-xs text-slate-400">{t("settingsVisuals")}</p>
             </div>
           </div>
           <button
@@ -78,7 +82,7 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
         {/* 1. Dataset Studio Action */}
         <div className="space-y-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Veri Seti & Eğitim
+            {t("datasetStudio")}
           </span>
           <button
             onClick={() => {
@@ -92,13 +96,13 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
                 <Database className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <span className="text-sm font-bold text-white block">Dataset Studio</span>
-                <span className="text-xs text-slate-300">Kendi işaret modelinizi eğitin</span>
+                <span className="text-sm font-bold text-white block">{t("datasetStudioTitle")}</span>
+                <span className="text-xs text-slate-300">{t("datasetStudioDesc")}</span>
               </div>
             </div>
             {isCustomModelActive && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                Aktif
+                {t("active")}
               </span>
             )}
           </button>
@@ -107,7 +111,7 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
         {/* 2. Skeleton Toggle */}
         <div className="space-y-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Görsel İskelet (MediaPipe Hand Mesh)
+            {t("visualSkeleton")}
           </span>
           <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -115,8 +119,8 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
                 {showSkeleton ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
               </div>
               <div>
-                <span className="text-sm font-bold text-white block">El İskelet Çizimi</span>
-                <span className="text-xs text-slate-300">21 eklem noktasını ekranda göster</span>
+                <span className="text-sm font-bold text-white block">{t("skeletonTitle")}</span>
+                <span className="text-xs text-slate-300">{t("skeletonDesc")}</span>
               </div>
             </div>
 
@@ -137,9 +141,9 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
         </div>
 
         {/* 3. Sign Alphabet & UI Language Options */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Arayüz Dili (UI Language)
+            {t("uiLanguage")}
           </span>
           <div className="grid grid-cols-2 gap-2">
             {UI_LANGUAGES.map((lang) => {
@@ -163,6 +167,14 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
               );
             })}
           </div>
+          
+          <button
+            onClick={onClose}
+            className="w-full mt-2 py-2.5 rounded-xl border border-sky-400/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            {t("confirmChanges")}
+          </button>
         </div>
 
         {/* 4. Alphabet Library Access */}
@@ -175,10 +187,11 @@ export const SettingsMenuModal: React.FC<SettingsMenuModalProps> = ({
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
           >
             <Languages className="w-4 h-4" />
-            TİD & ASL El Harfleri Kütüphanesi
+            {t("alphabetLibrary")}
           </button>
         </div>
       </div>
     </div>
   );
 };
+

@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { Camera, AlertCircle, RefreshCw, Play, FlipHorizontal, ShieldCheck, Focus } from "lucide-react";
+import { Camera, AlertCircle, RefreshCw, Play, SwitchCamera, ShieldCheck, Focus } from "lucide-react";
+import { UIAppLanguage } from "./SettingsMenuModal";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface CameraFeedProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -14,6 +16,7 @@ interface CameraFeedProps {
   onStartCamera: () => void;
   onRetry: () => void;
   onToggleFacingMode?: () => void;
+  uiLanguage: UIAppLanguage;
 }
 
 export const CameraFeed: React.FC<CameraFeedProps> = ({
@@ -27,19 +30,22 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
   onStartCamera,
   onRetry,
   onToggleFacingMode,
+  uiLanguage,
 }) => {
+  const { t } = useTranslation(uiLanguage);
+  
   // Mirroring for selfie camera
   const isMirrored = facingMode === "user";
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-      {/* Background Video Stream */}
+      {/* Background Video Stream with object-contain to prevent crop */}
       <video
         ref={videoRef}
         playsInline={true}
         autoPlay={true}
         muted={true}
-        className={`w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 ${
+        className={`w-full h-full object-contain select-none pointer-events-none transition-transform duration-300 ${
           isMirrored ? "-scale-x-100" : "scale-x-100"
         } ${isStreaming ? "opacity-100" : "opacity-0"}`}
       />
@@ -63,7 +69,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                 }`}
               >
                 <Focus className={`w-3.5 h-3.5 ${hasHandDetected ? "text-sky-400 animate-pulse" : "text-slate-400"}`} />
-                {hasHandDetected ? "El Algılandı (Aktif)" : "El Algılama Alanı"}
+                {hasHandDetected ? t("handDetected") : t("handDetectionZone")}
               </span>
             </div>
 
@@ -74,7 +80,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                   : "bg-black/30 text-slate-400 border-white/10"
               }`}
             >
-              {hasHandDetected ? "İşaret yapılıyor..." : "Elinizi çerçeveye getirin"}
+              {hasHandDetected ? t("makingSign") : t("bringHand")}
             </span>
           </div>
         </div>
@@ -93,26 +99,26 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
           </div>
 
           <h2 className="text-3xl font-black tracking-tight text-white text-center">
-            Türk İşaret Dili Vision
+            {t("visionTitle")}
           </h2>
           <p className="text-sm text-slate-300 text-center mt-2 max-w-xs leading-relaxed">
-            MediaPipe ve TensorFlow.js ile anlık, yerel işaret dili çevirisi.
+            {t("visionDesc")}
           </p>
 
           <button
             type="button"
             onClick={onToggleFacingMode}
             className="mt-5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-lg border border-white/15 text-xs text-slate-200 flex items-center gap-2 transition-all active:scale-95 shadow-md"
-            title="Başlamadan önce kamerayı değiştir"
+            title={t("cameraChangeBeforeStart")}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>
-              Kamera:{" "}
+              {t("cameraLabel")}{" "}
               <strong className="text-sky-400 font-bold">
-                {facingMode === "environment" ? "Arka (Çevre)" : "Ön (Selfie)"}
+                {facingMode === "environment" ? t("cameraBack") : t("cameraFront")}
               </strong>
             </span>
-            <FlipHorizontal className="w-3.5 h-3.5 text-slate-300 ml-0.5" />
+            <SwitchCamera className="w-3.5 h-3.5 text-slate-300 ml-0.5" />
           </button>
 
           <button
@@ -120,11 +126,11 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             className="mt-6 flex items-center justify-center gap-2.5 w-full max-w-xs py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-base shadow-xl shadow-sky-500/25 active:scale-95 transition-all border border-white/20"
           >
             <Play className="w-5 h-5 fill-current" />
-            Kamerayı Başlat
+            {t("startCamera")}
           </button>
 
           <span className="text-[11px] text-slate-400 mt-4 text-center">
-            iOS Safari ve Android Chrome ile %100 Uyumlu
+            {t("compatible")}
           </span>
         </div>
       )}
@@ -136,9 +142,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             <div className="w-16 h-16 rounded-full border-4 border-sky-500/20 border-t-sky-400 animate-spin" />
             <Camera className="w-7 h-7 text-sky-400 absolute inset-0 m-auto" />
           </div>
-          <h3 className="text-lg font-bold tracking-wide">Kamera Başlatılıyor</h3>
+          <h3 className="text-lg font-bold tracking-wide">{t("startingCamera")}</h3>
           <p className="text-sm text-slate-400 text-center mt-1.5 max-w-xs leading-relaxed">
-            Lütfen tarayıcınızın kamera iznine onay verin...
+            {t("allowCamera")}
           </p>
         </div>
       )}
@@ -149,7 +155,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
           <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mb-4 shadow-lg">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-rose-400 text-center">Kamera İzni Gerekiyor</h3>
+          <h3 className="text-xl font-bold text-rose-400 text-center">{t("cameraPermissionRequired")}</h3>
           <p className="text-sm text-slate-300 text-center mt-2 max-w-xs leading-relaxed">
             {error}
           </p>
@@ -158,7 +164,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             className="mt-6 flex items-center gap-2 px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-semibold text-sm transition-all shadow-lg shadow-sky-500/25 border border-white/10"
           >
             <RefreshCw className="w-4 h-4" />
-            Yeniden Deneyin
+            {t("retry")}
           </button>
         </div>
       )}
