@@ -26,16 +26,16 @@ function cleanSignChar(sign: string): string {
     return letterMatch[1].toUpperCase();
   }
 
-  // Common gesture mapping
+  // Common gesture mapping with natural Turkish vocabulary
   const commonMap: Record<string, string> = {
     Victory: "V",
-    Peace: "V",
-    Thumb_Up: "👍",
-    Thumb_Down: "👎",
-    Open_Palm: " ",
+    Peace: "Barış",
+    Thumb_Up: "Evet",
+    Thumb_Down: "Hayır",
+    Open_Palm: "Merhaba",
     Closed_Fist: "S",
-    Pointing_Up: "1",
-    ILoveYou: "❤️",
+    Pointing_Up: "Bir",
+    ILoveYou: "Seni Seviyorum",
   };
 
   if (commonMap[s]) {
@@ -48,6 +48,32 @@ function cleanSignChar(sign: string): string {
   }
 
   return s;
+}
+
+/**
+ * Intelligent Turkish Grammar Refinement Helper
+ * Cleans up raw sign sequences into natural, coherent sentences with proper spacing
+ */
+function refineTurkishSentence(raw: string): string {
+  if (!raw) return "";
+
+  let text = raw.trim();
+
+  // Basic word replacement dictionary for TİD -> Natural Turkish sentence flow
+  const tidGrammarRules: [RegExp, string][] = [
+    [/\bBEN\s+GİTMEK\b/gi, "Ben gidiyorum"],
+    [/\bSEN\s+GELMEK\b/gi, "Sen geliyor musun?"],
+    [/\bBEN\s+SEVMEK\s+SENI\b/gi, "Seni seviyorum"],
+    [/\bTEŞEKKÜR\s+EDERİM\b/gi, "Teşekkür ederim"],
+    [/\bNASILSIN\s+SEN\b/gi, "Nasılsın?"],
+    [/\bSAĞ\s+OL\b/gi, "Sağ ol"],
+  ];
+
+  for (const [pattern, replacement] of tidGrammarRules) {
+    text = text.replace(pattern, replacement);
+  }
+
+  return text;
 }
 
 export function useSentenceBuilder(
@@ -67,17 +93,32 @@ export function useSentenceBuilder(
   const topPrediction = predictions[0];
   const currentSign = topPrediction && topPrediction.confidence >= 65 ? topPrediction.sign : null;
 
-  // Append character to sentence
-  const appendChar = useCallback((char: string) => {
-    if (!char) return;
+  // Append character or word to sentence with smart auto-spacing
+  const appendChar = useCallback((token: string) => {
+    if (!token) return;
 
     // Haptic feedback for mobile
     if (typeof window !== "undefined" && "navigator" in window && navigator.vibrate) {
       navigator.vibrate([45, 30, 45]);
     }
 
-    setSentence((prev) => prev + char);
-  }, []);
+    setSentence((prev) => {
+      if (!prev) return token;
+
+      const isPrevSingleChar = prev.trim().split(" ").pop()?.length === 1;
+      const isCurrentSingleChar = token.length === 1;
+
+      // If spelling out single letters (e.g. A, B, C), join without spaces unless space is explicit
+      if (isPrevSingleChar && isCurrentSingleChar) {
+        return prev + token;
+      }
+
+      // Automatically insert space before adding full words or multi-char tokens
+      const needsSpace = !prev.endsWith(" ");
+      const updated = needsSpace ? `${prev} ${token}` : prev + token;
+      return activeLanguage === "TID" ? refineTurkishSentence(updated) : updated;
+    });
+  }, [activeLanguage]);
 
   // Real-time gesture hold & commit loop
   useEffect(() => {
@@ -183,3 +224,4 @@ export function useSentenceBuilder(
     manualAppend: appendChar,
   };
 }
+
