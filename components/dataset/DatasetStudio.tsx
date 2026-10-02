@@ -205,11 +205,27 @@ export const DatasetStudio: React.FC<DatasetStudioProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Letter_A, Water, Hello, Please"
+                      placeholder="e.g. Merhaba, Ben, Sen, Nasılsın, İyiyim"
                       value={signLabel}
                       onChange={(e) => setSignLabel(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 text-sm"
                     />
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {["Merhaba", "Nasılsın", "Ben", "İyiyim", "Sen"].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setSignLabel(preset)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                            signLabel === preset
+                              ? "bg-sky-500/20 border-sky-400 text-sky-300"
+                              : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Target Frame Count */}

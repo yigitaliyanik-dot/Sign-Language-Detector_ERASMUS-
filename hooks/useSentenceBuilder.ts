@@ -30,12 +30,21 @@ function cleanSignChar(sign: string): string {
   const commonMap: Record<string, string> = {
     Victory: "V",
     Peace: "Barış",
-    Thumb_Up: "Evet",
+    Thumb_Up: "İyiyim",
     Thumb_Down: "Hayır",
-    Open_Palm: "Merhaba",
+    Open_Palm: "Açık El",
+    "Open Palm": "Açık El",
     Closed_Fist: "S",
     Pointing_Up: "Bir",
+    "Pointing Up": "Bir",
     ILoveYou: "Seni Seviyorum",
+    Merhaba: "Merhaba",
+    Nasilsin: "Nasılsın",
+    Nasılsın: "Nasılsın",
+    Ben: "Ben",
+    Sen: "Sen",
+    İyiyim: "İyiyim",
+    Iyiyim: "İyiyim",
   };
 
   if (commonMap[s]) {
@@ -59,13 +68,19 @@ function refineTurkishSentence(raw: string): string {
 
   let text = raw.trim();
 
-  // Basic word replacement dictionary for TİD -> Natural Turkish sentence flow
+  // Word replacement dictionary for TİD -> Natural Turkish sentence flow
   const tidGrammarRules: [RegExp, string][] = [
+    [/\bMERHABA\s+NASILSIN\b/gi, "Merhaba, nasılsın?"],
+    [/\bSEN\s+NASILSIN\b/gi, "Sen nasılsın?"],
+    [/\bNASILSIN\s+SEN\b/gi, "Nasılsın?"],
+    [/\bBEN\s+İYİYİM\b/gi, "Ben iyiyim"],
+    [/\bBEN\s+İYİ\b/gi, "Ben iyiyim"],
+    [/\bBEN\s+SEN\b/gi, "Ben ve sen"],
+    [/\bİYİYİM\s+SEN\b/gi, "İyiyim, sen?"],
     [/\bBEN\s+GİTMEK\b/gi, "Ben gidiyorum"],
     [/\bSEN\s+GELMEK\b/gi, "Sen geliyor musun?"],
     [/\bBEN\s+SEVMEK\s+SENI\b/gi, "Seni seviyorum"],
     [/\bTEŞEKKÜR\s+EDERİM\b/gi, "Teşekkür ederim"],
-    [/\bNASILSIN\s+SEN\b/gi, "Nasılsın?"],
     [/\bSAĞ\s+OL\b/gi, "Sağ ol"],
   ];
 
