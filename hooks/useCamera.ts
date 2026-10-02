@@ -70,8 +70,8 @@ export function useCamera(initialFacingMode: "user" | "environment" = "environme
             // Requirement 1: Ideal facingMode prevents OverconstrainedError on varied devices
             facingMode: { ideal: mode },
             // Requirement 4: Resolution auto-scaling for mobile screens
-            width: { ideal: isPortrait ? 1080 : 1920, min: 480 },
-            height: { ideal: isPortrait ? 1920 : 1080, min: 480 },
+            width: { ideal: isPortrait ? 720 : 1280, min: 480 },
+            height: { ideal: isPortrait ? 1280 : 720, min: 480 },
             aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
           },
         };

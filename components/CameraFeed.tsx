@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Camera, AlertCircle, RefreshCw, Play, SwitchCamera, ShieldCheck, Focus } from "lucide-react";
 import { UIAppLanguage } from "./SettingsMenuModal";
 import { useTranslation } from "../hooks/useTranslation";
@@ -37,15 +37,34 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
   // Mirroring for selfie camera
   const isMirrored = facingMode === "user";
 
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (bgVideoRef.current && videoRef.current && videoRef.current.srcObject) {
+      bgVideoRef.current.srcObject = videoRef.current.srcObject;
+    }
+  }, [isStreaming, videoRef]);
+
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-      {/* Background Video Stream with object-contain to prevent crop */}
+    <div className="relative w-full h-full overflow-hidden bg-black flex items-center justify-center">
+      {/* Background Blurred Fill Video (for object-contain empty spaces) */}
+      <video
+        ref={bgVideoRef}
+        playsInline={true}
+        autoPlay={true}
+        muted={true}
+        className={`absolute inset-0 w-full h-full object-cover blur-3xl scale-[1.15] pointer-events-none transition-transform duration-300 ${
+          isMirrored ? "-scale-x-100" : "scale-x-100"
+        } ${isStreaming ? "opacity-35" : "opacity-0"}`}
+      />
+
+      {/* Main Video Stream with object-contain to prevent crop */}
       <video
         ref={videoRef}
         playsInline={true}
         autoPlay={true}
         muted={true}
-        className={`w-full h-full object-contain select-none pointer-events-none transition-transform duration-300 ${
+        className={`relative z-0 w-full h-full object-contain drop-shadow-2xl select-none pointer-events-none transition-transform duration-300 ${
           isMirrored ? "-scale-x-100" : "scale-x-100"
         } ${isStreaming ? "opacity-100" : "opacity-0"}`}
       />
